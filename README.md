@@ -23,6 +23,27 @@ Featuring a dual-portal interface tailored separately for **Customers** and **Sh
 
 ---
 
+## 📸 Application Screenshots
+
+### 🔑 Authentication
+![Login Screen](screenshots/login.png)
+
+### 👤 Customer Portal
+| 🏪 Shop Browsing | 🛒 Cart & Checkout (Razorpay) |
+| :---: | :---: |
+| ![Customer Dashboard](screenshots/customer_dashboard.png) | ![Cart & Checkout](screenshots/product_browse.png) |
+
+| 📦 Live Order Progress |
+| :---: |
+| ![Live Order Tracking](screenshots/customer_orders.png) |
+
+### 🏪 Shopkeeper Portal
+| 📊 Performance Stats | 🔔 Real-Time Order Management |
+| :---: | :---: |
+| ![Shopkeeper Stats](screenshots/shopkeeper_dashboard.png) | ![Incoming Orders Feed](screenshots/incoming_orders.png) |
+
+---
+
 ## 🛠️ Tech Stack & Architecture
 
 - **Backend**: Node.js & Express.js (Model-View-Controller pattern).
