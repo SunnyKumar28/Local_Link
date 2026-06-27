@@ -2,7 +2,7 @@
 
 **Local Link** is a modern, full-stack MERN (MongoDB, Express, React, Node.js) application that empowers local commerce through real-time order tracking and store-level inventory management. 
 
-Featuring a dual-portal interface tailored separately for **Customers** and **Shopkeepers**, Local Link delivers low-latency notifications, stateless role-based authentication, and a secure payment checkout gateway.
+Featuring a dual-portal interface tailored separately for **Customers** and **Shopkeepers**, Local Link delivers low-latency notifications, stateless role-based authentication, and a premium built-in payment checkout gateway.
 
 ---
 
@@ -12,7 +12,7 @@ Featuring a dual-portal interface tailored separately for **Customers** and **Sh
 - **Browse Stores**: Find local shops by category (Grocery, Electronics, Bakery, Pharmacy, etc.).
 - **Product Catalog**: Live product availability and stock indicators.
 - **Cart Management**: Add items, adjust quantities, and supply custom delivery addresses or order notes.
-- **Razorpay Checkout**: Seamless payment gateway integration (supports standard checkout and local test-mode simulations).
+- **Premium Payment Gateway**: Fully custom, in-app payment checkout with support for **UPI**, **Credit/Debit Card**, **Net Banking**, and **Wallet** payment methods — complete with live card preview, processing animations, and success/failure screens.
 - **Real-Time Order Tracking**: Visual progress bar tracking order statuses (Pending ➔ Confirmed ➔ Preparing ➔ Ready ➔ Delivered) as they are updated by shopkeepers.
 
 ### 🏪 Shopkeeper Dashboard
@@ -29,13 +29,18 @@ Featuring a dual-portal interface tailored separately for **Customers** and **Sh
 ![Login Screen](screenshots/login.png)
 
 ### 👤 Customer Portal
-| 🏪 Shop Browsing | 🛒 Cart & Checkout (Razorpay) |
+| 🏪 Shop Browsing | 📦 Live Order Progress |
 | :---: | :---: |
-| ![Customer Dashboard](screenshots/customer_dashboard.png) | ![Cart & Checkout](screenshots/product_browse.png) |
+| ![Customer Dashboard](screenshots/customer_dashboard.png) | ![Live Order Tracking](screenshots/customer_orders.png) |
 
-| 📦 Live Order Progress |
+### 💳 Premium Payment Gateway
+| 🛒 Checkout (UPI, Card, Bank, Wallet) | 💳 Live Card Preview |
+| :---: | :---: |
+| ![Payment Gateway Checkout](screenshots/payment_gateway_checkout.png) | ![Card Payment Form](screenshots/payment_gateway_card.png) |
+
+| ✅ Payment Success |
 | :---: |
-| ![Live Order Tracking](screenshots/customer_orders.png) |
+| ![Payment Success](screenshots/payment_success.png) |
 
 ### 🏪 Shopkeeper Portal
 | 📊 Performance Stats | 🔔 Real-Time Order Management |
@@ -52,9 +57,25 @@ Featuring a dual-portal interface tailored separately for **Customers** and **Sh
 - **Real-Time**: Socket.IO (Server & Client integration).
   - **Targeted Rooms**: Clients auto-join custom rooms (`shop:<shop_id>` and `user:<user_id>`) so order alerts are isolated and secure.
 - **Authentication**: Stateless JSON Web Tokens (JWT) with custom Role-Based Access Control (RBAC) middleware.
-- **Payments**: Razorpay SDK (with automatic fallback to **Simulated Payment Mode** for testing environments where API keys are placeholders).
+- **Payments**: Custom-built premium payment gateway with multi-method support (UPI, Card, Net Banking, Wallet). Features live card preview, real-time form validation, animated processing steps, and success/failure screens. Supports both simulated and live Razorpay backend verification.
 - **Frontend**: React.js (Vite), React Router, Axios, Context API, React Hot Toast, React Icons.
 - **Styling**: Premium dark-themed design system featuring CSS glassmorphism, tailored gradients, and responsive layouts.
+
+---
+
+## 💳 Payment Gateway Details
+
+The built-in payment gateway provides a **production-grade checkout experience** without any third-party UI dependencies:
+
+| Feature | Description |
+| :--- | :--- |
+| **UPI** | Quick-select Google Pay, PhonePe, or Paytm — or enter a custom UPI ID |
+| **Credit/Debit Card** | Live gradient card preview that updates as you type, with auto-detection for Visa, Mastercard, and RuPay |
+| **Net Banking** | Choose from SBI, HDFC, ICICI, Axis, or Kotak with radio-button selection |
+| **Wallet** | Paytm, MobiKwik, FreeCharge, or Amazon Pay |
+| **Security UI** | 10-minute countdown timer, 256-bit SSL badge, lock icon on pay button |
+| **Processing** | 4-step animated sequence: Connecting → Authenticating → Processing → Confirming |
+| **Success/Failure** | Confetti animation on success, transaction ID display, retry on failure |
 
 ---
 
@@ -74,7 +95,7 @@ Local_Link/
 │   │   ├── shopController.js
 │   │   ├── productController.js
 │   │   ├── orderController.js
-│   │   └── paymentController.js         # Razorpay checkout & signature checks
+│   │   └── paymentController.js         # Payment verification & signature checks
 │   ├── middleware/                      # Auth guards & global error handlers
 │   ├── routes/                          # API routing
 │   ├── socket/socketHandler.js          # Socket.IO room management
@@ -84,16 +105,20 @@ Local_Link/
 ├── client/                              # React + Vite frontend
 │   ├── public/
 │   ├── src/
-│   │   ├── components/                  # Reusable UI components (Navbar, OrderCard)
+│   │   ├── components/                  # Reusable UI components
+│   │   │   ├── Navbar.jsx               # Navigation bar with role-based links
+│   │   │   ├── OrderCard.jsx            # Order display card with status tracker
+│   │   │   ├── PaymentGateway.jsx       # Premium multi-method payment checkout
+│   │   │   └── PaymentGateway.css       # Payment gateway dark-theme styling
 │   │   ├── context/                     # State providers (AuthContext, SocketContext)
 │   │   ├── pages/                       # Portal screens
 │   │   │   ├── Auth/Login/Register
 │   │   │   ├── customer/                # Customer browse & checkout
 │   │   │   └── shopkeeper/              # Inventory & orders control dashboards
-│   │   ├── services/api.js               # Central Axios configuration with JWT interceptor
+│   │   ├── services/api.js              # Central Axios configuration with JWT interceptor
 │   │   ├── App.jsx                      # App router configuration
-│   │   └── index.css                     # Dark-mode design system & variables
-│   └── index.html                       # Base HTML (includes Razorpay checkout script)
+│   │   └── index.css                    # Dark-mode design system & variables
+│   └── index.html                       # Base HTML entry point
 ```
 
 ---
@@ -128,10 +153,12 @@ JWT_SECRET=your_super_secret_jwt_key
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 
-# Razorpay Keys (Leave as placeholders to use the Mock Payment Simulator)
+# Razorpay Keys (Leave as placeholders to use the built-in Payment Gateway simulator)
 RAZORPAY_KEY_ID=rzp_test_YourTestKeyHere
 RAZORPAY_KEY_SECRET=YourTestSecretHere
 ```
+
+> **Note**: When Razorpay keys are left as placeholders, the app automatically uses the **built-in premium payment gateway** with simulated processing. Replace with real Razorpay keys for live payment processing.
 
 ### 3. Seed the Database
 
@@ -175,7 +202,7 @@ Visit the app at `http://localhost:5173`.
 | `/api/shops` | `GET` | Private | Retrieve all active stores |
 | `/api/products/shop/:shopId`| `GET` | Private | Get products belonging to a shop |
 | `/api/orders` | `POST` | Private (Cust) | Place order (direct COD route) |
-| `/api/payments/create-order` | `POST` | Private (Cust) | Prepare order transaction & Razorpay order ID |
-| `/api/payments/verify` | `POST` | Private (Cust) | Verify signature, deduct stocks, & confirm order |
+| `/api/payments/create-order` | `POST` | Private (Cust) | Prepare order transaction & generate order ID |
+| `/api/payments/verify` | `POST` | Private (Cust) | Verify payment, deduct stocks, & confirm order |
 | `/api/orders/shop` | `GET` | Private (Shop) | Fetch incoming orders for shopkeeper (indexed) |
 | `/api/orders/:id/status` | `PUT` | Private (Shop) | Update order stage & notify user via Socket.IO |

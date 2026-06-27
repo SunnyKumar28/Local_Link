@@ -73,7 +73,8 @@ const createPaymentOrder = async (req, res, next) => {
       !process.env.RAZORPAY_KEY_ID ||
       process.env.RAZORPAY_KEY_ID.includes('YourTestKeyHere') ||
       process.env.RAZORPAY_KEY_ID.includes('your_key_id') ||
-      process.env.RAZORPAY_KEY_ID === 'rzp_test_YourTestKeyHere';
+      process.env.RAZORPAY_KEY_ID === 'rzp_test_YourTestKeyHere' ||
+      process.env.RAZORPAY_KEY_ID === '';
 
     if (isPlaceholderKey) {
       // Create a pending order in our DB with a mock order ID
@@ -171,8 +172,8 @@ const verifyPayment = async (req, res, next) => {
       orderId,
     } = req.body;
 
-    // Check if it's a simulated order
-    const isMock = razorpay_order_id && razorpay_order_id.startsWith('mock_order_');
+    // Check if it's a simulated order (mock or custom gateway)
+    const isMock = razorpay_order_id && (razorpay_order_id.startsWith('mock_order_') || razorpay_order_id.startsWith('sim_order_'));
 
     if (isMock) {
       const order = await Order.findById(orderId);

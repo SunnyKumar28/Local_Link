@@ -4,6 +4,7 @@ import { productAPI, shopAPI, orderAPI, paymentAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { HiShoppingCart, HiPlus, HiMinus, HiArrowLeft, HiTrash } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import PaymentGateway from '../../components/PaymentGateway';
 import './Customer.css';
 
 const ProductBrowse = () => {
@@ -18,6 +19,8 @@ const ProductBrowse = () => {
   const [showCart, setShowCart] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,8 +103,8 @@ const ProductBrowse = () => {
 
     try {
       setOrdering(true);
-      
-      // 1. Create payment order on server
+
+      // 1. Create payment order on server (creates pending order in DB)
       const res = await paymentAPI.createOrder({
         shopId,
         items: cart.map(({ product, quantity }) => ({ product, quantity })),
@@ -109,102 +112,53 @@ const ProductBrowse = () => {
         notes,
       });
 
-      const { razorpayOrder, orderId, key, isMock } = res.data;
+      const { razorpayOrder, orderId } = res.data;
+      setPendingOrderId(orderId);
 
-      if (isMock) {
-        toast.loading('Processing payment (Simulated Demo)...', { id: 'payment-verify' });
-        setTimeout(async () => {
-          try {
-            const verifyRes = await paymentAPI.verifyPayment({
-              razorpay_order_id: razorpayOrder.id,
-              razorpay_payment_id: `mock_payment_${Date.now()}`,
-              razorpay_signature: 'mock_signature',
-              orderId,
-            });
-
-            if (verifyRes.data.success) {
-              toast.success('Order placed & paid successfully (Demo)! 🎉', { id: 'payment-verify' });
-              setCart([]);
-              setDeliveryAddress('');
-              setNotes('');
-              setShowCart(false);
-              navigate('/customer/orders');
-            } else {
-              toast.error('Payment simulation failed!', { id: 'payment-verify' });
-            }
-          } catch (err) {
-            toast.error(
-              err.response?.data?.message || 'Payment simulation failed',
-              { id: 'payment-verify' }
-            );
-          } finally {
-            setOrdering(false);
-          }
-        }, 1500);
-        return;
-      }
-
-      // 2. Open Razorpay Checkout modal
-      const options = {
-        key: key,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        name: 'Local Link',
-        description: `Order from ${shop?.name || 'Local Shop'}`,
-        order_id: razorpayOrder.id,
-        handler: async (response) => {
-          try {
-            toast.loading('Verifying payment...', { id: 'payment-verify' });
-            
-            // 3. Verify signature
-            const verifyRes = await paymentAPI.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              orderId,
-            });
-
-            if (verifyRes.data.success) {
-              toast.success('Order placed & paid successfully! 🎉', { id: 'payment-verify' });
-              setCart([]);
-              setDeliveryAddress('');
-              setNotes('');
-              setShowCart(false);
-              navigate('/customer/orders');
-            } else {
-              toast.error('Payment verification failed!', { id: 'payment-verify' });
-            }
-          } catch (err) {
-            toast.error(
-              err.response?.data?.message || 'Payment verification failed',
-              { id: 'payment-verify' }
-            );
-          } finally {
-            setOrdering(false);
-          }
-        },
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: user?.phone || '',
-        },
-        theme: {
-          color: '#10b981', // emerald color
-        },
-        modal: {
-          ondismiss: () => {
-            toast.error('Payment checkout closed');
-            setOrdering(false);
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      // 2. Open our premium payment gateway UI
+      setShowPaymentGateway(true);
+      setOrdering(false);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to initiate checkout');
       setOrdering(false);
     }
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      toast.loading('Verifying payment...', { id: 'payment-verify' });
+
+      const verifyRes = await paymentAPI.verifyPayment({
+        razorpay_order_id: paymentData.razorpay_order_id,
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_signature: paymentData.razorpay_signature,
+        orderId: pendingOrderId,
+      });
+
+      if (verifyRes.data.success) {
+        toast.success('Order placed & paid successfully! 🎉', { id: 'payment-verify' });
+        setCart([]);
+        setDeliveryAddress('');
+        setNotes('');
+        setShowCart(false);
+        setShowPaymentGateway(false);
+        setPendingOrderId(null);
+        navigate('/customer/orders');
+      } else {
+        toast.error('Payment verification failed!', { id: 'payment-verify' });
+      }
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || 'Payment verification failed',
+        { id: 'payment-verify' }
+      );
+    }
+  };
+
+  const handlePaymentClose = () => {
+    setShowPaymentGateway(false);
+    setPendingOrderId(null);
+    toast.error('Payment cancelled');
   };
 
   if (loading) {
@@ -390,11 +344,30 @@ const ProductBrowse = () => {
                 onClick={placeOrder}
                 disabled={ordering}
               >
-                {ordering ? 'Placing Order...' : 'Place Order'}
+                {ordering ? 'Processing...' : `Pay ₹${cartTotal.toFixed(2)}`}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Premium Payment Gateway */}
+      {showPaymentGateway && (
+        <PaymentGateway
+          amount={cartTotal}
+          currency="INR"
+          shopName={shop?.name || 'Local Shop'}
+          items={cart}
+          userName={user?.name || ''}
+          userEmail={user?.email || ''}
+          userPhone={user?.phone || ''}
+          onSuccess={handlePaymentSuccess}
+          onFailure={() => {
+            setShowPaymentGateway(false);
+            toast.error('Payment failed. Please try again.');
+          }}
+          onClose={handlePaymentClose}
+        />
       )}
     </div>
   );
